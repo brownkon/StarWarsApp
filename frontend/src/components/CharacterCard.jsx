@@ -1,8 +1,10 @@
+import { formatMass } from '../helpers/text';
+
 const CharacterCard = ({ character, onSelect }) => {
   const heightLabel = character.height_cm
     ? `${character.height_cm} cm / ${character.height_in}"`
     : 'Unknown';
-  const massLabel = character.mass_kg ? `${character.mass_kg} kg` : 'Unknown';
+  const massLabel = formatMass(character.mass_kg);
 
   return (
     <article

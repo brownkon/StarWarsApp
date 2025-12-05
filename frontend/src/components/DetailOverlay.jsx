@@ -1,5 +1,5 @@
 import Spinner from './Spinner';
-import { formatList } from '../helpers/text';
+import { formatList, formatMass } from '../helpers/text';
 
 const DetailOverlay = ({ character, details, loading, onClose }) => {
   if (!character) return null;
@@ -17,19 +17,13 @@ const DetailOverlay = ({ character, details, loading, onClose }) => {
           </button>
         </div>
         <div className="overlay__body">
-          {loading && (
-            <div className="center">
-              <Spinner />
-              <p className="loading-copy">Pulling data from distant systems...</p>
-            </div>
-          )}
           <div className="detail-grid">
             <div>
               <h4>Vitals</h4>
               <ul>
-                <li>Height: {character.height_cm || 'Unknown'} cm</li>
+                <li>Height (cm): {character.height_cm || 'Unknown'}</li>
                 <li>Height (in): {character.height_in || 'Unknown'}</li>
-                <li>Mass: {character.mass_kg || 'Unknown'} kg</li>
+                <li>Mass: {formatMass(character.mass_kg)}</li>
                 <li>Birth year: {character.birth_year || 'Unknown'}</li>
                 <li>Gender: {character.gender || 'Unknown'}</li>
               </ul>
@@ -42,21 +36,30 @@ const DetailOverlay = ({ character, details, loading, onClose }) => {
                 <li>Eye color: {character.eye_color || 'Unknown'}</li>
               </ul>
             </div>
-            <div>
-              <h4>Origins & travel</h4>
-              <ul>
-                <li>Homeworld: {details?.homeworld || character.homeworld || 'Unknown'}</li>
-                <li>Vehicles: {formatList(details?.vehicles)}</li>
-                <li>Starships: {formatList(details?.starships)}</li>
-              </ul>
-            </div>
-            <div>
-              <h4>Appearances</h4>
-              <ul>
-                <li>Films: {formatList(details?.films)}</li>
-                <li>Species: {formatList(details?.species)}</li>
-              </ul>
-            </div>
+            {loading ? (
+              <div className="detail-loading" style={{ gridColumn: 'span 2' }}>
+                <Spinner />
+                <p className="loading-copy">Pulling data from distant systems...</p>
+              </div>
+            ) : (
+              <>
+                <div>
+                  <h4>Origins & travel</h4>
+                  <ul>
+                    <li>Homeworld: {details?.homeworld || character.homeworld || 'Unknown'}</li>
+                    <li>Vehicles: {formatList(details?.vehicles)}</li>
+                    <li>Starships: {formatList(details?.starships)}</li>
+                  </ul>
+                </div>
+                <div>
+                  <h4>Appearances</h4>
+                  <ul>
+                    <li>Films: {formatList(details?.films)}</li>
+                    <li>Species: {formatList(details?.species)}</li>
+                  </ul>
+                </div>
+              </>
+            )}
           </div>
           <div className="link-row">
             {character.url && (
