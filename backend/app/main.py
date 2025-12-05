@@ -1,4 +1,5 @@
 """FastAPI backend for the Star Wars Data Explorer vertical slice."""
+import asyncio
 from typing import List, Optional
 
 import httpx
@@ -27,6 +28,31 @@ class Character(BaseModel):
     mass_kg: Optional[float]
     birth_year: Optional[str]
     gender: Optional[str]
+    hair_color: Optional[str]
+    skin_color: Optional[str]
+    eye_color: Optional[str]
+    homeworld: Optional[str]
+    films: List[str]
+    species: List[str]
+    vehicles: List[str]
+    starships: List[str]
+    url: Optional[str]
+
+
+class ResolveRequest(BaseModel):
+    homeworld: Optional[str] = None
+    films: List[str] = []
+    species: List[str] = []
+    vehicles: List[str] = []
+    starships: List[str] = []
+
+
+class ResolveResponse(BaseModel):
+    homeworld: Optional[str]
+    films: List[str]
+    species: List[str]
+    vehicles: List[str]
+    starships: List[str]
 
 
 def _to_float(value: str) -> Optional[float]:
@@ -59,6 +85,15 @@ def _transform_character(raw: dict) -> dict:
         "mass_kg": mass_kg,
         "birth_year": raw.get("birth_year"),
         "gender": raw.get("gender"),
+        "hair_color": raw.get("hair_color"),
+        "skin_color": raw.get("skin_color"),
+        "eye_color": raw.get("eye_color"),
+        "homeworld": raw.get("homeworld"),
+        "films": raw.get("films", []),
+        "species": raw.get("species", []),
+        "vehicles": raw.get("vehicles", []),
+        "starships": raw.get("starships", []),
+        "url": raw.get("url"),
     }
 
 
@@ -105,6 +140,17 @@ async def _fetch_people() -> List[dict]:
     return results
 
 
+async def _fetch_name(client: httpx.AsyncClient, url: str) -> Optional[str]:
+    """Fetch a resource by URL and return its name/title field."""
+    try:
+        response = await client.get(url)
+        response.raise_for_status()
+        payload = response.json()
+        return payload.get("name") or payload.get("title")
+    except Exception:
+        return None
+
+
 @app.get("/api/characters", response_model=List[Character])
 async def list_characters(
     sort_by: str = Query(
@@ -120,6 +166,54 @@ async def list_characters(
     reverse = order == "desc"
     simplified.sort(key=_sorting_key(sort_by), reverse=reverse)
     return simplified
+
+
+@app.post("/api/resolve", response_model=ResolveResponse)
+async def resolve_entities(payload: ResolveRequest):
+    """Resolve SWAPI resource URLs to their display names, concurrently."""
+
+    async with httpx.AsyncClient(timeout=10) as client:
+        tasks = {
+            "homeworld": None,
+            "films": [],
+            "species": [],
+            "vehicles": [],
+            "starships": [],
+        }
+
+        if payload.homeworld:
+            tasks["homeworld"] = asyncio.create_task(_fetch_name(client, payload.homeworld))
+
+        for key, urls in [
+            ("films", payload.films),
+            ("species", payload.species),
+            ("vehicles", payload.vehicles),
+            ("starships", payload.starships),
+        ]:
+            tasks[key] = [asyncio.create_task(_fetch_name(client, url)) for url in urls]
+
+        homeworld_name = await tasks["homeworld"] if tasks["homeworld"] else None
+        films = [name for name in await asyncio.gather(*tasks["films"])] if tasks["films"] else []
+        species = (
+            [name for name in await asyncio.gather(*tasks["species"])] if tasks["species"] else []
+        )
+        vehicles = (
+            [name for name in await asyncio.gather(*tasks["vehicles"])] if tasks["vehicles"] else []
+        )
+        starships = (
+            [name for name in await asyncio.gather(*tasks["starships"])]
+            if tasks["starships"]
+            else []
+        )
+
+    # Filter out Nones for failed lookups
+    return ResolveResponse(
+        homeworld=homeworld_name,
+        films=[n for n in films if n],
+        species=[n for n in species if n],
+        vehicles=[n for n in vehicles if n],
+        starships=[n for n in starships if n],
+    )
 
 
 @app.get("/health")

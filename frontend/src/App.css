@@ -245,6 +245,15 @@ select:focus {
   padding: 18px;
   backdrop-filter: blur(6px);
   box-shadow: 0 10px 24px rgba(0, 0, 0, 0.25);
+  cursor: pointer;
+  transition: transform 120ms ease, box-shadow 120ms ease;
+}
+
+.card:focus,
+.card:hover {
+  outline: none;
+  transform: translateY(-2px);
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.3);
 }
 
 .card-title {
@@ -288,6 +297,84 @@ dd {
 .loading-copy {
   color: #d4af37;
   letter-spacing: 0.05em;
+}
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+  z-index: 10;
+}
+
+.overlay__card {
+  width: min(720px, 95vw);
+  background: rgba(14, 16, 22, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  box-shadow: 0 22px 42px rgba(0, 0, 0, 0.35);
+  padding: 24px;
+}
+
+.overlay__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.overlay__header h2 {
+  margin: 4px 0 0 0;
+}
+
+.overlay__close {
+  background: rgba(255, 255, 255, 0.08);
+  color: #f8f7f2;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 999px;
+  padding: 10px 14px;
+  cursor: pointer;
+}
+
+.overlay__body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.detail-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.detail-grid h4 {
+  margin: 0 0 6px 0;
+}
+
+.detail-grid ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  color: #cfd3db;
+}
+
+.detail-grid li {
+  margin-bottom: 6px;
+}
+
+.link-row a {
+  color: #ffe66d;
+  text-decoration: none;
+}
+
+.link-row a:hover {
+  text-decoration: underline;
 }
 
 @media (max-width: 640px) {
