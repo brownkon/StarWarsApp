@@ -3,7 +3,7 @@ import asyncio
 import json
 import sqlite3
 from pathlib import Path
-from typing import List, Optional
+from typing import Dict, List, Optional, Set
 
 import httpx
 from fastapi import FastAPI, HTTPException, Query
@@ -35,9 +35,13 @@ class Character(BaseModel):
     hair_color: Optional[str]
     eye_color: Optional[str]
     homeworld: Optional[str]
+    homeworld_name: Optional[str] = None
     films: List[str]
+    film_titles: List[str] = []
     species: List[str]
+    species_names: List[str] = []
     starships: List[str]
+    starship_names: List[str] = []
     url: Optional[str]
 
 
@@ -107,6 +111,15 @@ def _init_db():
             )
             """
         )
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS resolved_names (
+                url TEXT PRIMARY KEY,
+                name TEXT NOT NULL,
+                updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+            )
+            """
+        )
         conn.commit()
 
 
@@ -115,7 +128,7 @@ def _load_cached_characters() -> List[dict]:
         return []
     with sqlite3.connect(DB_PATH) as conn:
         rows = conn.execute("SELECT payload FROM characters").fetchall()
-    return [json.loads(row[0]) for row in rows]
+    return [_ensure_display_fields(json.loads(row[0])) for row in rows]
 
 
 def _replace_cache(characters: List[dict]) -> None:
@@ -123,7 +136,39 @@ def _replace_cache(characters: List[dict]) -> None:
         conn.execute("DELETE FROM characters")
         conn.executemany(
             "INSERT INTO characters (name, payload) VALUES (?, ?)",
-            [(char["name"], json.dumps(char)) for char in characters],
+            [(char["name"], json.dumps(_ensure_display_fields(char))) for char in characters],
+        )
+        conn.commit()
+
+
+def _ensure_display_fields(char: dict) -> dict:
+    """Ensure name/title fields exist to satisfy the response model."""
+    char.setdefault("homeworld_name", None)
+    char.setdefault("film_titles", [])
+    char.setdefault("species_names", [])
+    char.setdefault("starship_names", [])
+    return char
+
+
+def _load_cached_names(urls: Set[str]) -> Dict[str, str]:
+    if not urls:
+        return {}
+    with sqlite3.connect(DB_PATH) as conn:
+        rows = conn.execute(
+            "SELECT url, name FROM resolved_names WHERE url IN (%s)"
+            % ",".join(["?"] * len(urls)),
+            list(urls),
+        ).fetchall()
+    return {url: name for url, name in rows}
+
+
+def _store_names(pairs: Dict[str, str]) -> None:
+    if not pairs:
+        return
+    with sqlite3.connect(DB_PATH) as conn:
+        conn.executemany(
+            "INSERT OR REPLACE INTO resolved_names (url, name) VALUES (?, ?)",
+            [(url, name) for url, name in pairs.items()],
         )
         conn.commit()
 
@@ -179,8 +224,28 @@ async def _get_characters_from_source(refresh: bool) -> List[dict]:
 
     raw_people = await _fetch_people()
     simplified = [_transform_character(person) for person in raw_people]
-    _replace_cache(simplified)
-    return simplified
+    enriched = await _enrich_with_names(simplified)
+    _replace_cache(enriched)
+    return enriched
+
+
+async def _enrich_with_names(characters: List[dict]) -> List[dict]:
+    """Attach name lookups (homeworld, films, species, starships) using the cache."""
+    url_set: Set[str] = set()
+    for char in characters:
+        url_set.update(filter(None, [char.get("homeworld")]))
+        for key in ("films", "species", "starships"):
+            url_set.update(char.get(key, []))
+
+    resolved = await _resolve_urls(url_set)
+
+    for char in characters:
+        char["homeworld_name"] = resolved.get(char.get("homeworld"))
+        char["film_titles"] = [resolved.get(url) for url in char.get("films", []) if resolved.get(url)]
+        char["species_names"] = [resolved.get(url) for url in char.get("species", []) if resolved.get(url)]
+        char["starship_names"] = [resolved.get(url) for url in char.get("starships", []) if resolved.get(url)]
+
+    return [_ensure_display_fields(char) for char in characters]
 
 
 async def _fetch_name(client: httpx.AsyncClient, url: str) -> Optional[str]:
@@ -192,6 +257,27 @@ async def _fetch_name(client: httpx.AsyncClient, url: str) -> Optional[str]:
         return payload.get("name") or payload.get("title")
     except Exception:
         return None
+
+
+async def _resolve_urls(urls: Set[str]) -> Dict[str, str]:
+    """Resolve a set of URLs to names using cache first, then SWAPI."""
+    urls = {u for u in urls if u}
+    if not urls:
+        return {}
+
+    cached = _load_cached_names(urls)
+    missing = [u for u in urls if u not in cached]
+    fresh: Dict[str, Optional[str]] = {}
+
+    if missing:
+        async with httpx.AsyncClient(timeout=10) as client:
+            results = await asyncio.gather(*[_fetch_name(client, url) for url in missing])
+        fresh = {url: name for url, name in zip(missing, results) if name}
+        if fresh:
+            _store_names(fresh)
+
+    combined = {**cached, **fresh}
+    return combined
 
 
 @app.get("/api/characters", response_model=List[Character])
@@ -222,41 +308,24 @@ def startup_event():
 async def resolve_entities(payload: ResolveRequest):
     """Resolve SWAPI resource URLs to their display names, concurrently."""
 
-    async with httpx.AsyncClient(timeout=10) as client:
-        tasks = {
-            "homeworld": None,
-            "films": [],
-            "species": [],
-            "starships": [],
-        }
+    urls: Set[str] = set()
+    urls.update(filter(None, [payload.homeworld]))
+    urls.update(payload.films)
+    urls.update(payload.species)
+    urls.update(payload.starships)
 
-        if payload.homeworld:
-            tasks["homeworld"] = asyncio.create_task(_fetch_name(client, payload.homeworld))
+    resolved = await _resolve_urls(urls)
 
-        for key, urls in [
-            ("films", payload.films),
-            ("species", payload.species),
-            ("starships", payload.starships),
-        ]:
-            tasks[key] = [asyncio.create_task(_fetch_name(client, url)) for url in urls]
+    homeworld_name = resolved.get(payload.homeworld) if payload.homeworld else None
+    films = [resolved.get(url) for url in payload.films if resolved.get(url)]
+    species = [resolved.get(url) for url in payload.species if resolved.get(url)]
+    starships = [resolved.get(url) for url in payload.starships if resolved.get(url)]
 
-        homeworld_name = await tasks["homeworld"] if tasks["homeworld"] else None
-        films = [name for name in await asyncio.gather(*tasks["films"])] if tasks["films"] else []
-        species = (
-            [name for name in await asyncio.gather(*tasks["species"])] if tasks["species"] else []
-        )
-        starships = (
-            [name for name in await asyncio.gather(*tasks["starships"])]
-            if tasks["starships"]
-            else []
-        )
-
-    # Filter out Nones for failed lookups
     return ResolveResponse(
         homeworld=homeworld_name,
-        films=[n for n in films if n],
-        species=[n for n in species if n],
-        starships=[n for n in starships if n],
+        films=films,
+        species=species,
+        starships=starships,
     )
 
 

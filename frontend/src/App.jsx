@@ -59,9 +59,9 @@ function App() {
     };
 
     return {
-      homeworlds: collect((c) => c.homeworld),
-      films: collect((c) => c.films),
-      species: collect((c) => c.species),
+      homeworlds: collect((c) => c.homeworld_name),
+      films: collect((c) => c.film_titles),
+      species: collect((c) => c.species_names),
       genders: collect((c) => c.gender),
     };
   }, [characters]);
@@ -70,9 +70,9 @@ function App() {
     const term = search.trim().toLowerCase();
     return characters.filter((character) => {
       if (term && !character.name.toLowerCase().includes(term)) return false;
-      if (filters.homeworld && character.homeworld !== filters.homeworld) return false;
-      if (filters.film && !(character.films || []).includes(filters.film)) return false;
-      if (filters.species && !(character.species || []).includes(filters.species)) return false;
+      if (filters.homeworld && character.homeworld_name !== filters.homeworld) return false;
+      if (filters.film && !(character.film_titles || []).includes(filters.film)) return false;
+      if (filters.species && !(character.species_names || []).includes(filters.species)) return false;
       if (filters.gender && character.gender !== filters.gender) return false;
       return true;
     });

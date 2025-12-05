@@ -45,16 +45,15 @@ const DetailOverlay = ({ character, details, loading, onClose }) => {
                 <div>
                   <h4>Origins & travel</h4>
                   <ul>
-                    <li>Homeworld: {details?.homeworld || character.homeworld || 'Unknown'}</li>
-                    <li>Vehicles: {formatList(details?.vehicles)}</li>
-                    <li>Starships: {formatList(details?.starships)}</li>
+                    <li>Homeworld: {details?.homeworld || character.homeworld_name || 'Unknown'}</li>
+                    <li>Starships: {formatList(details?.starships || character.starship_names)}</li>
                   </ul>
                 </div>
                 <div>
                   <h4>Appearances</h4>
                   <ul>
-                    <li>Films: {formatList(details?.films)}</li>
-                    <li>Species: {formatList(details?.species)}</li>
+                    <li>Films: {formatList(details?.films || character.film_titles)}</li>
+                    <li>Species: {formatList(details?.species || character.species_names)}</li>
                   </ul>
                 </div>
               </>
