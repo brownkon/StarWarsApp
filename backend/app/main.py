@@ -1,5 +1,8 @@
 """FastAPI backend for the Star Wars Data Explorer vertical slice."""
 import asyncio
+import json
+import sqlite3
+from pathlib import Path
 from typing import List, Optional
 
 import httpx
@@ -8,6 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 SWAPI_PEOPLE_URL = "https://swapi.dev/api/people/"
+DB_PATH = Path(__file__).resolve().parent / "swapi_cache.db"
 
 app = FastAPI(title="Star Wars Data Explorer", version="0.1.0")
 
@@ -91,6 +95,39 @@ def _transform_character(raw: dict) -> dict:
     }
 
 
+def _init_db():
+    DB_PATH.parent.mkdir(parents=True, exist_ok=True)
+    with sqlite3.connect(DB_PATH) as conn:
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS characters (
+                name TEXT PRIMARY KEY,
+                payload TEXT NOT NULL,
+                updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+            )
+            """
+        )
+        conn.commit()
+
+
+def _load_cached_characters() -> List[dict]:
+    if not DB_PATH.exists():
+        return []
+    with sqlite3.connect(DB_PATH) as conn:
+        rows = conn.execute("SELECT payload FROM characters").fetchall()
+    return [json.loads(row[0]) for row in rows]
+
+
+def _replace_cache(characters: List[dict]) -> None:
+    with sqlite3.connect(DB_PATH) as conn:
+        conn.execute("DELETE FROM characters")
+        conn.executemany(
+            "INSERT INTO characters (name, payload) VALUES (?, ?)",
+            [(char["name"], json.dumps(char)) for char in characters],
+        )
+        conn.commit()
+
+
 def _sorting_key(field: str):
     def key(item: dict):
         value = item.get(field)
@@ -134,6 +171,18 @@ async def _fetch_people() -> List[dict]:
     return results
 
 
+async def _get_characters_from_source(refresh: bool) -> List[dict]:
+    """Return characters, using cache unless refresh is requested or cache empty."""
+    cached = [] if refresh else _load_cached_characters()
+    if cached:
+        return cached
+
+    raw_people = await _fetch_people()
+    simplified = [_transform_character(person) for person in raw_people]
+    _replace_cache(simplified)
+    return simplified
+
+
 async def _fetch_name(client: httpx.AsyncClient, url: str) -> Optional[str]:
     """Fetch a resource by URL and return its name/title field."""
     try:
@@ -153,15 +202,20 @@ async def list_characters(
         description="Server-side sort field",
     ),
     order: str = Query("desc", enum=["asc", "desc"], description="Sort order"),
+    refresh: bool = Query(False, description="Force refresh from SWAPI and repopulate cache"),
 ):
     """Fetch characters from SWAPI, simplify the shape, and sort before returning."""
 
-    raw_people = await _fetch_people()
-    simplified = [_transform_character(person) for person in raw_people]
+    simplified = await _get_characters_from_source(refresh)
 
     reverse = order == "desc"
     simplified.sort(key=_sorting_key(sort_by), reverse=reverse)
     return simplified
+
+
+@app.on_event("startup")
+def startup_event():
+    _init_db()
 
 
 @app.post("/api/resolve", response_model=ResolveResponse)
@@ -214,4 +268,5 @@ async def health() -> dict:
 if __name__ == "__main__":
     import uvicorn
 
+    _init_db()
     uvicorn.run("app.main:app", host="0.0.0.0", port=8000, reload=True)

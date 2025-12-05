@@ -26,11 +26,11 @@ function App() {
     setFilters((prev) => ({ ...prev, [key]: value }));
   };
 
-  const loadCharacters = async () => {
+  const loadCharacters = async (forceRefresh = false) => {
     setLoading(true);
     setError('');
     try {
-      const data = await fetchCharacters(sortBy, order);
+      const data = await fetchCharacters(sortBy, order, forceRefresh);
       setCharacters(data);
     } catch (err) {
       setError(err.message || 'Failed to load characters.');
@@ -94,7 +94,6 @@ function App() {
           homeworld: 'Unavailable',
           films: [],
           species: [],
-          vehicles: [],
           starships: [],
           error: err.message,
         });
@@ -145,7 +144,7 @@ function App() {
                 <option value="desc">Descending</option>
               </select>
             </div>
-            <button className="refresh" onClick={loadCharacters} disabled={loading}>
+            <button className="refresh" onClick={() => loadCharacters(true)} disabled={loading}>
               Refresh
             </button>
           </div>
