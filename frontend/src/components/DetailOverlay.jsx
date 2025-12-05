@@ -59,6 +59,11 @@ const DetailOverlay = ({ character, details, loading, onClose }) => {
               </>
             )}
           </div>
+          {details?.error && (
+            <div className="overlay__error" role="alert">
+              Unable to load additional details: {details.error}
+            </div>
+          )}
           <div className="link-row">
             {character.url && (
               <a href={character.url} target="_blank" rel="noreferrer">

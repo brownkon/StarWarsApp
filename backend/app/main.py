@@ -196,7 +196,13 @@ async def _fetch_people() -> List[dict]:
             while next_url:
                 response = await client.get(next_url)
                 response.raise_for_status()
-                payload = response.json()
+                try:
+                    payload = response.json()
+                except ValueError as exc:
+                    raise HTTPException(
+                        status_code=502,
+                        detail="Received invalid data from SWAPI.",
+                    ) from exc
                 results.extend(payload.get("results", []))
                 next_url = payload.get("next")
                 page_counter += 1
@@ -212,6 +218,8 @@ async def _fetch_people() -> List[dict]:
             status_code=504,
             detail="Unable to reach SWAPI. Please try again shortly.",
         ) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail="Failed to fetch data from SWAPI.") from exc
 
     return results
 
@@ -271,10 +279,27 @@ async def _fetch_name(client: httpx.AsyncClient, url: str) -> Optional[str]:
     try:
         response = await client.get(url)
         response.raise_for_status()
-        payload = response.json()
-        return payload.get("name") or payload.get("title")
-    except Exception:
-        return None
+        try:
+            payload = response.json()
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=502, detail="Received invalid data from SWAPI."
+            ) from exc
+        name = payload.get("name") or payload.get("title")
+        if not name:
+            raise HTTPException(status_code=502, detail="SWAPI response missing name/title.")
+        return name
+    except httpx.HTTPStatusError as exc:
+        raise HTTPException(
+            status_code=502,
+            detail=f"SWAPI returned an error: {exc.response.status_code}",
+        ) from exc
+    except httpx.RequestError as exc:
+        raise HTTPException(
+            status_code=504, detail="Unable to reach SWAPI. Please try again shortly."
+        ) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail="Failed to resolve SWAPI data.") from exc
 
 
 async def _resolve_urls(urls: Set[str]) -> Dict[str, str]:

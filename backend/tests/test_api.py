@@ -1,3 +1,4 @@
+import httpx
 import pytest
 from httpx import AsyncClient, ASGITransport
 
@@ -72,3 +73,66 @@ async def test_characters_sorted_and_enriched(monkeypatch):
     assert data[0]["homeworld_name"] == "World A"
     assert data[0]["film_titles"] == ["Film One"]
     assert data[1]["species_names"] == ["Spec Two"]
+
+
+@pytest.mark.anyio("asyncio")
+async def test_characters_swapi_http_error(monkeypatch):
+    request = httpx.Request("GET", "https://swapi.dev/api/people/")
+
+    class FakeResponse:
+        def __init__(self):
+            self.response = httpx.Response(500, request=request)
+
+        def raise_for_status(self):
+            raise httpx.HTTPStatusError("boom", request=request, response=self.response)
+
+        def json(self):
+            return {}
+
+    class FakeClient:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return False
+
+        async def get(self, url):
+            return FakeResponse()
+
+    monkeypatch.setattr("app.main.httpx.AsyncClient", FakeClient)
+
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        resp = await ac.get("/api/characters?refresh=true")
+
+    assert resp.status_code == 502
+    assert "SWAPI returned an error" in resp.json()["detail"]
+
+
+@pytest.mark.anyio("asyncio")
+async def test_resolve_swapi_network_error(monkeypatch):
+    class FailingClient:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return False
+
+        async def get(self, url):
+            raise httpx.RequestError("network down", request=httpx.Request("GET", url))
+
+    monkeypatch.setattr("app.main.httpx.AsyncClient", FailingClient)
+
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        resp = await ac.post(
+            "/api/resolve",
+            json={"homeworld": "https://swapi.dev/api/planets/1"},
+        )
+
+    assert resp.status_code == 504
+    assert "Unable to reach SWAPI" in resp.json()["detail"]
