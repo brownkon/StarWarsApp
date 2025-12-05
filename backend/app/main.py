@@ -220,6 +220,10 @@ async def _get_characters_from_source(refresh: bool) -> List[dict]:
     """Return characters, using cache unless refresh is requested or cache empty."""
     cached = [] if refresh else _load_cached_characters()
     if cached:
+        if _needs_name_enrichment(cached):
+            enriched_cached = await _enrich_with_names(cached)
+            _replace_cache(enriched_cached)
+            return enriched_cached
         return cached
 
     raw_people = await _fetch_people()
@@ -246,6 +250,20 @@ async def _enrich_with_names(characters: List[dict]) -> List[dict]:
         char["starship_names"] = [resolved.get(url) for url in char.get("starships", []) if resolved.get(url)]
 
     return [_ensure_display_fields(char) for char in characters]
+
+
+def _needs_name_enrichment(characters: List[dict]) -> bool:
+    """Detect if any character is missing resolved display names."""
+    for char in characters:
+        if char.get("homeworld") and not char.get("homeworld_name"):
+            return True
+        if char.get("films") and not char.get("film_titles"):
+            return True
+        if char.get("species") and not char.get("species_names"):
+            return True
+        if char.get("starships") and not char.get("starship_names"):
+            return True
+    return False
 
 
 async def _fetch_name(client: httpx.AsyncClient, url: str) -> Optional[str]:

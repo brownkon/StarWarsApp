@@ -46,24 +46,51 @@ function App() {
   }, [sortBy, order]);
 
   const filterOptions = useMemo(() => {
-    const collect = (getter) => {
-      const values = new Set();
-      characters.forEach((c) => {
-        const val = getter(c);
-        if (Array.isArray(val)) {
-          val.forEach((v) => v && values.add(v));
-        } else if (val) {
-          values.add(val);
-        }
+    const homeworlds = new Set();
+    const films = new Set();
+    const species = new Set();
+    const genders = new Set();
+    const filmOrder = [
+      'The Phantom Menace',
+      'Attack of the Clones',
+      'Revenge of the Sith',
+      'A New Hope',
+      'The Empire Strikes Back',
+      'Return of the Jedi',
+      'The Force Awakens',
+    ];
+
+    characters.forEach((c) => {
+      const homeworldVal = c.homeworld_name || c.homeworld;
+      if (homeworldVal) homeworlds.add(homeworldVal);
+
+      const filmVals =
+        (c.film_titles && c.film_titles.length > 0 ? c.film_titles : c.films) || [];
+      filmVals.forEach((f) => f && films.add(f));
+
+      const speciesVals =
+        (c.species_names && c.species_names.length > 0 ? c.species_names : c.species) || [];
+      speciesVals.forEach((s) => s && species.add(s));
+
+      if (c.gender) genders.add(c.gender);
+    });
+
+    const sortAlpha = (arr) => arr.sort((a, b) => a.localeCompare(b));
+    const sortFilms = (arr) =>
+      arr.sort((a, b) => {
+        const ai = filmOrder.indexOf(a);
+        const bi = filmOrder.indexOf(b);
+        if (ai === -1 && bi === -1) return a.localeCompare(b);
+        if (ai === -1) return 1;
+        if (bi === -1) return -1;
+        return ai - bi;
       });
-      return Array.from(values);
-    };
 
     return {
-      homeworlds: collect((c) => c.homeworld_name),
-      films: collect((c) => c.film_titles),
-      species: collect((c) => c.species_names),
-      genders: collect((c) => c.gender),
+      homeworlds: sortAlpha(Array.from(homeworlds)),
+      films: sortFilms(Array.from(films)),
+      species: sortAlpha(Array.from(species)),
+      genders: Array.from(genders),
     };
   }, [characters]);
 
@@ -71,9 +98,19 @@ function App() {
     const term = search.trim().toLowerCase();
     return characters.filter((character) => {
       if (term && !character.name.toLowerCase().includes(term)) return false;
-      if (filters.homeworld && character.homeworld_name !== filters.homeworld) return false;
-      if (filters.film && !(character.film_titles || []).includes(filters.film)) return false;
-      if (filters.species && !(character.species_names || []).includes(filters.species)) return false;
+      const homeworldVal = character.homeworld_name || character.homeworld;
+      const filmVals =
+        (character.film_titles && character.film_titles.length > 0
+          ? character.film_titles
+          : character.films) || [];
+      const speciesVals =
+        (character.species_names && character.species_names.length > 0
+          ? character.species_names
+          : character.species) || [];
+
+      if (filters.homeworld && homeworldVal !== filters.homeworld) return false;
+      if (filters.film && !filmVals.includes(filters.film)) return false;
+      if (filters.species && !speciesVals.includes(filters.species)) return false;
       if (filters.gender && character.gender !== filters.gender) return false;
       return true;
     });

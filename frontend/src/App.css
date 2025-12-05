@@ -98,6 +98,7 @@ select {
   padding: 12px 14px;
   border-radius: 10px;
   font-size: 15px;
+  max-height: 54px;
 }
 
 input:focus,
