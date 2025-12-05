@@ -29,12 +29,10 @@ class Character(BaseModel):
     birth_year: Optional[str]
     gender: Optional[str]
     hair_color: Optional[str]
-    skin_color: Optional[str]
     eye_color: Optional[str]
     homeworld: Optional[str]
     films: List[str]
     species: List[str]
-    vehicles: List[str]
     starships: List[str]
     url: Optional[str]
 
@@ -43,7 +41,6 @@ class ResolveRequest(BaseModel):
     homeworld: Optional[str] = None
     films: List[str] = []
     species: List[str] = []
-    vehicles: List[str] = []
     starships: List[str] = []
 
 
@@ -51,7 +48,6 @@ class ResolveResponse(BaseModel):
     homeworld: Optional[str]
     films: List[str]
     species: List[str]
-    vehicles: List[str]
     starships: List[str]
 
 
@@ -86,12 +82,10 @@ def _transform_character(raw: dict) -> dict:
         "birth_year": raw.get("birth_year"),
         "gender": raw.get("gender"),
         "hair_color": raw.get("hair_color"),
-        "skin_color": raw.get("skin_color"),
         "eye_color": raw.get("eye_color"),
         "homeworld": raw.get("homeworld"),
         "films": raw.get("films", []),
         "species": raw.get("species", []),
-        "vehicles": raw.get("vehicles", []),
         "starships": raw.get("starships", []),
         "url": raw.get("url"),
     }
@@ -154,7 +148,9 @@ async def _fetch_name(client: httpx.AsyncClient, url: str) -> Optional[str]:
 @app.get("/api/characters", response_model=List[Character])
 async def list_characters(
     sort_by: str = Query(
-        "mass_kg", enum=["name", "height_cm", "mass_kg"], description="Server-side sort field"
+        "mass_kg",
+        enum=["name", "height_cm", "mass_kg", "birth_year", "gender", "homeworld"],
+        description="Server-side sort field",
     ),
     order: str = Query("desc", enum=["asc", "desc"], description="Sort order"),
 ):
@@ -177,7 +173,6 @@ async def resolve_entities(payload: ResolveRequest):
             "homeworld": None,
             "films": [],
             "species": [],
-            "vehicles": [],
             "starships": [],
         }
 
@@ -187,7 +182,6 @@ async def resolve_entities(payload: ResolveRequest):
         for key, urls in [
             ("films", payload.films),
             ("species", payload.species),
-            ("vehicles", payload.vehicles),
             ("starships", payload.starships),
         ]:
             tasks[key] = [asyncio.create_task(_fetch_name(client, url)) for url in urls]
@@ -196,9 +190,6 @@ async def resolve_entities(payload: ResolveRequest):
         films = [name for name in await asyncio.gather(*tasks["films"])] if tasks["films"] else []
         species = (
             [name for name in await asyncio.gather(*tasks["species"])] if tasks["species"] else []
-        )
-        vehicles = (
-            [name for name in await asyncio.gather(*tasks["vehicles"])] if tasks["vehicles"] else []
         )
         starships = (
             [name for name in await asyncio.gather(*tasks["starships"])]
@@ -211,7 +202,6 @@ async def resolve_entities(payload: ResolveRequest):
         homeworld=homeworld_name,
         films=[n for n in films if n],
         species=[n for n in species if n],
-        vehicles=[n for n in vehicles if n],
         starships=[n for n in starships if n],
     )
 

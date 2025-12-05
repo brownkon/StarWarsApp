@@ -32,7 +32,6 @@ const DetailOverlay = ({ character, details, loading, onClose }) => {
               <h4>Appearance</h4>
               <ul>
                 <li>Hair color: {character.hair_color || 'Unknown'}</li>
-                <li>Skin color: {character.skin_color || 'Unknown'}</li>
                 <li>Eye color: {character.eye_color || 'Unknown'}</li>
               </ul>
             </div>

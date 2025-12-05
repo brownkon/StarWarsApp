@@ -2,6 +2,9 @@ export const SORT_OPTIONS = [
   { value: 'mass_kg', label: 'Mass' },
   { value: 'height_cm', label: 'Height' },
   { value: 'name', label: 'Name' },
+  { value: 'birth_year', label: 'Birth Year' },
+  { value: 'gender', label: 'Gender' },
+  { value: 'homeworld', label: 'Homeworld' },
 ];
 
 export const fetchCharacters = async (sortBy, order) => {
