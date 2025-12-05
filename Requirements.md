@@ -21,42 +21,38 @@ The project intentionally keeps scope small while demonstrating good engineering
 --------------------------
 
 3.1 Backend Requirements
-- Provide at least one custom endpoint, e.g., `/api/characters`.
-- Fetch data from SWAPI (for example, from `https://swapi.dev/api/people/`).
+- Provide custom endpoints: `/api/characters` and `/api/resolve`.
+- Fetch data from SWAPI (`https://swapi.dev/api/people/`) and paginate all pages.
 - Transform/clean the response data:
-  - Remove unused or overly verbose fields.
-  - Keep a simplified structure with essential fields such as:
-    - `name`
-    - `height`
-    - `mass`
-    - `birth_year`
-    - `gender`
-- Implement at least one piece of server-side logic before returning the response, such as:
-  - Sorting characters by mass or height.
-  - Converting height from centimeters to inches.
-- Return a simplified JSON payload tailored to what the frontend needs.
-- Include a simple way to test the endpoint:
-  - Example `curl` command in the README
+  - Remove unused fields; keep simplified structure with:
+    - `name`, `height_cm`, `height_in`, `mass_kg`, `birth_year`, `gender`, `hair_color`, `eye_color`
+    - raw URLs for `homeworld`, `films`, `species`, `starships`
+    - resolved display names for `homeworld_name`, `film_titles`, `species_names`, `starship_names`
+- Server-side logic:
+  - Height conversion cm → inches, server-side sorting (name, height, mass, birth year).
+  - SQLite cache for characters and resolved names; `refresh=true` query forces refetch + cache repopulation.
+- Return simplified JSON tailored for the frontend; `/api/resolve` resolves SWAPI URLs to names with caching.
+- Include example `curl` usage in the README (kept up to date).
 
 3.2 Frontend Requirements
-- The frontend must call the **custom backend endpoint** (e.g., `/api/characters`) and not SWAPI directly.
-- Display the transformed Star Wars data returned by the backend in a clean layout (cards, list, or grid).
-- Include a visible loading state while data is being fetched (Star Wars themed spinner).
-- Handle and display error states gracefully (e.g., “Failed to load characters. Please try again.”).
-- Use a responsive layout that works on desktop and mobile screen sizes.
-- Provide a simple search or filter (e.g., filter by name).
-- Provide sorting options in the UI (e.g., sort by name, height, or mass).
-- UI that is clean and Star Wars themed.
+- Call backend endpoints only (`/api/characters`, `/api/resolve`), never SWAPI directly.
+- Display transformed Star Wars data in a responsive card grid with search, filtering, and sorting.
+- Show Star Wars–themed loading states (page + detail overlay), graceful error and empty states.
+- Filters:
+  - Name search
+  - Homeworld (names), Species (names), Gender
+  - Movies: multi-select dropdown by title
+- Sorting options: name, height, mass, birth year (asc/desc).
+- UI is Star Wars themed and responsive (desktop + mobile).
 
 4. Non-Functional Requirements
 ------------------------------
-- Code should be readable, consistently formatted, and reasonably documented with comments where helpful.
-- Project structure should be organized (e.g., clear separation of backend and frontend code).
-- Setup and run instructions must be clearly documented in `README.md`.
-- The system should handle:
-  - Network failures when calling SWAPI (e.g., show an error message on the frontend).
-  - Empty states (e.g., if no data is returned or filter yields no results).
-  - Slow responses (e.g., keep showing the loading state until data is ready).
+- Readable, consistently formatted code; organized backend/frontend structure.
+- Clear setup/run instructions in `README.md`.
+- Reliability:
+  - Handle SWAPI/network failures with 5xx + frontend error messaging.
+  - Handle empty states and slow responses with loading placeholders.
+  - Use SQLite caching to reduce repeated SWAPI calls; force refresh available via query param/button.
 
 5. User Stories
 ---------------
