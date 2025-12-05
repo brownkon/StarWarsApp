@@ -190,10 +190,9 @@ function App() {
       <main className="content">
         <header className="hero">
           <div>
-            <p className="eyebrow">Full-stack vertical slice</p>
-            <h1>Star Wars Data Explorer</h1>
-            <p className="subtitle">
-            </p>
+            <p className="eyebrow">Star Wars</p>
+            <h1>Holonet Fan Archive</h1>
+            <p className="subtitle">A fan-built console for browsing heroes, scoundrels, and legends.</p>
           </div>
           <div className="cta-row">
             <div className="filter-group">
