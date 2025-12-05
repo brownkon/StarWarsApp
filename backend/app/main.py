@@ -302,7 +302,7 @@ async def _resolve_urls(urls: Set[str]) -> Dict[str, str]:
 async def list_characters(
     sort_by: str = Query(
         "mass_kg",
-        enum=["name", "height_cm", "mass_kg", "birth_year", "gender", "homeworld"],
+        enum=["name", "height_cm", "mass_kg", "birth_year"],
         description="Server-side sort field",
     ),
     order: str = Query("desc", enum=["asc", "desc"], description="Sort order"),

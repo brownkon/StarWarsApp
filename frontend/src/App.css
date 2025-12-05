@@ -83,6 +83,70 @@ h1 {
   gap: 8px;
 }
 
+.filter-group__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.checkbox-list {
+  display: grid;
+  gap: 6px;
+  padding: 8px 10px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+.checkbox-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: #f8f7f2;
+}
+
+.select-dropdown {
+  position: relative;
+}
+
+.select-trigger {
+  width: 100%;
+  text-align: left;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #f8f7f2;
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-size: 15px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+}
+
+.select-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 5;
+  background: rgba(9, 11, 16, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  padding: 10px;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+.chevron {
+  font-size: 12px;
+  opacity: 0.7;
+}
+
 label {
   font-size: 13px;
   text-transform: uppercase;

@@ -3,8 +3,6 @@ export const SORT_OPTIONS = [
   { value: 'height_cm', label: 'Height' },
   { value: 'name', label: 'Name' },
   { value: 'birth_year', label: 'Birth Year' },
-  { value: 'gender', label: 'Gender' },
-  { value: 'homeworld', label: 'Homeworld' },
 ];
 
 export const fetchCharacters = async (sortBy, order, refresh = false) => {

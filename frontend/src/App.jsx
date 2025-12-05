@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import CharacterCard from './components/CharacterCard';
 import DetailOverlay from './components/DetailOverlay';
 import InfoBanner from './components/InfoBanner';
@@ -17,15 +17,35 @@ function App() {
   const [detailsLoading, setDetailsLoading] = useState(false);
   const [filters, setFilters] = useState({
     homeworld: '',
-    film: '',
+    films: [],
     species: '',
     gender: '',
   });
+  const [filmDropdownOpen, setFilmDropdownOpen] = useState(false);
+  const filmDropdownRef = useRef(null);
   const showInitialLoading = loading && characters.length === 0;
 
   const setFilter = (key, value) => {
     setFilters((prev) => ({ ...prev, [key]: value }));
   };
+
+  const toggleFilm = (film) => {
+    setFilters((prev) => {
+      const exists = prev.films.includes(film);
+      const films = exists ? prev.films.filter((f) => f !== film) : [...prev.films, film];
+      return { ...prev, films };
+    });
+  };
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (filmDropdownRef.current && !filmDropdownRef.current.contains(e.target)) {
+        setFilmDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const loadCharacters = async (forceRefresh = false) => {
     setLoading(true);
@@ -109,7 +129,9 @@ function App() {
           : character.species) || [];
 
       if (filters.homeworld && homeworldVal !== filters.homeworld) return false;
-      if (filters.film && !filmVals.includes(filters.film)) return false;
+      if (filters.films.length > 0 && !filters.films.some((f) => filmVals.includes(f))) {
+        return false;
+      }
       if (filters.species && !speciesVals.includes(filters.species)) return false;
       if (filters.gender && character.gender !== filters.gender) return false;
       return true;
@@ -223,18 +245,37 @@ function App() {
             </div>
             <div className="filter-group">
               <label htmlFor="film-filter">Movie</label>
-              <select
-                id="film-filter"
-                value={filters.film}
-                onChange={(e) => setFilter('film', e.target.value)}
+              <div
+                className="select-dropdown"
+                ref={filmDropdownRef}
               >
-                <option value="">All</option>
-                {filterOptions.films.map((film) => (
-                  <option key={film} value={film}>
-                    {film}
-                  </option>
-                ))}
-              </select>
+                <button
+                  type="button"
+                  className="select-trigger"
+                  aria-haspopup="listbox"
+                  aria-expanded={filmDropdownOpen}
+                  onClick={() => setFilmDropdownOpen((open) => !open)}
+                >
+                  {filters.films.length === 0
+                    ? 'Select movies'
+                    : `${filters.films.length} selected`}
+                  <span className="chevron">▾</span>
+                </button>
+                {filmDropdownOpen && (
+                  <div id="film-filter" className="select-menu" role="listbox">
+                    {filterOptions.films.map((film) => (
+                      <label key={film} className="checkbox-item">
+                        <input
+                          type="checkbox"
+                          checked={filters.films.includes(film)}
+                          onChange={() => toggleFilm(film)}
+                        />
+                        <span>{film}</span>
+                      </label>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
             <div className="filter-group">
               <label htmlFor="species-filter">Species</label>
