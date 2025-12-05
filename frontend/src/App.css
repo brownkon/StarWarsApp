@@ -139,27 +139,96 @@ select:focus {
 }
 
 .spinner {
-  display: inline-flex;
-  gap: 12px;
+  position: relative;
+  width: 120px;
+  height: 120px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.spinner .beam {
+.spinner__core {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #ffe66d 0%, #d4af37 55%, rgba(10, 10, 10, 0.6) 85%);
+  box-shadow: 0 0 18px rgba(255, 218, 87, 0.9), 0 0 32px rgba(255, 218, 87, 0.45);
+  animation: throb 1.25s ease-in-out infinite alternate;
+}
+
+.spinner__ring {
+  position: absolute;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 230, 109, 0.25);
+  box-shadow: 0 0 18px rgba(255, 218, 87, 0.4);
+  mix-blend-mode: screen;
+}
+
+.spinner__ring--outer {
+  width: 110px;
+  height: 110px;
+  border-top-color: #ffe66d;
+  border-right-color: rgba(255, 230, 109, 0.7);
+  animation: spin 2.4s linear infinite;
+}
+
+.spinner__ring--inner {
+  width: 72px;
+  height: 72px;
+  border-bottom-color: #f5e382;
+  border-left-color: rgba(255, 230, 109, 0.55);
+  animation: spin-reverse 1.8s linear infinite;
+}
+
+.spinner__orbit {
+  position: absolute;
+  inset: 0;
+  animation: spin 3.4s linear infinite;
+}
+
+.spinner__orbit span {
+  position: absolute;
   width: 10px;
-  height: 56px;
-  border-radius: 12px;
-  background: linear-gradient(180deg, #ffe66d, #d4af37 60%, rgba(255, 255, 255, 0.8));
-  box-shadow: 0 0 14px rgba(255, 218, 87, 0.65);
-  animation: pulse 1s ease-in-out infinite alternate;
+  height: 10px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #fff7c2 0%, #d4af37 70%);
+  box-shadow: 0 0 12px rgba(255, 230, 109, 0.9);
 }
 
-.spinner .beam:nth-child(2) {
-  animation-delay: 0.25s;
+.spinner__orbit span:nth-child(1) {
+  top: -4px;
+  left: 50%;
+  transform: translateX(-50%);
 }
 
-@keyframes pulse {
+.spinner__orbit span:nth-child(2) {
+  left: -4px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.spinner__orbit span:nth-child(3) {
+  right: -4px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+@keyframes spin {
   to {
-    transform: translateY(-6px) scaleY(1.05);
-    box-shadow: 0 0 18px rgba(255, 218, 87, 0.9);
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes spin-reverse {
+  to {
+    transform: rotate(-360deg);
+  }
+}
+
+@keyframes throb {
+  to {
+    transform: scale(1.08);
+    box-shadow: 0 0 24px rgba(255, 218, 87, 1), 0 0 36px rgba(255, 218, 87, 0.55);
   }
 }
 
