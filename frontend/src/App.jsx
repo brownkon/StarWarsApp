@@ -21,6 +21,7 @@ function App() {
     species: '',
     gender: '',
   });
+  const showInitialLoading = loading && characters.length === 0;
 
   const setFilter = (key, value) => {
     setFilters((prev) => ({ ...prev, [key]: value }));
@@ -81,6 +82,25 @@ function App() {
   useEffect(() => {
     if (!selectedCharacter) {
       setDetails(null);
+      setDetailsLoading(false);
+      return;
+    }
+
+    const needsResolve = () => {
+      const homeworldNeeds = !!selectedCharacter.homeworld && !selectedCharacter.homeworld_name;
+      const filmsNeed =
+        (selectedCharacter.films?.length || 0) > (selectedCharacter.film_titles?.length || 0);
+      const speciesNeed =
+        (selectedCharacter.species?.length || 0) > (selectedCharacter.species_names?.length || 0);
+      const starshipsNeed =
+        (selectedCharacter.starships?.length || 0) >
+        (selectedCharacter.starship_names?.length || 0);
+      return homeworldNeeds || filmsNeed || speciesNeed || starshipsNeed;
+    };
+
+    if (!needsResolve()) {
+      setDetails(null);
+      setDetailsLoading(false);
       return;
     }
 
@@ -212,7 +232,7 @@ function App() {
           </div>
         </header>
 
-        {loading && (
+        {showInitialLoading && (
           <div className="center">
             <Spinner />
             <p className="loading-copy">Loading characters from a galaxy far, far away...</p>
@@ -227,7 +247,7 @@ function App() {
           <InfoBanner title="No results" message="No characters match your search." />
         )}
 
-        {!loading && !error && filteredCharacters.length > 0 && (
+        {!error && filteredCharacters.length > 0 && (
           <section className="grid" aria-live="polite">
             {filteredCharacters.map((character) => (
               <CharacterCard
